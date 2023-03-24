@@ -75,9 +75,19 @@ use QodeNL\LaravelPosthog\Facades\Posthog;
 Posthog::identify('email@user.com', ['first_name' => 'John', 'last_name' => 'Doe']);
 ```
 
+### Alias 
+
+If you want to assign a session ID to a user (for example a front-end session ID) you can use the `alias` method. 
+
+The Session ID argument will be assigned to the auto-generated ID of the user.
+
+```php
+Posthog::alias('Session ID here');
+```
+
 ### Queue / jobs
 
-All above actions will be executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications. 
+All above actions will be executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications.
 
 ## Changelog
 
