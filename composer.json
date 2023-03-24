@@ -1,0 +1,39 @@
+{
+    "name": "qodenl/laravel-posthog",
+    "description": "Laravel implementation for Posthog",
+    "autoload": {
+        "psr-4": {
+            "QodeNL\\LaravelPosthog\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Christian Schoenmakers",
+            "email": "info@qode.io"
+        }
+    ],
+    "keywords": [
+        "posthog",
+        "laravel"
+    ],
+    "require": {
+        "php": "^8.0",
+        "illuminate/support": "^9.0|^10.0",
+        "posthog/posthog-php": "^3.0"
+    },
+    "require-dev": {
+        "roave/security-advisories": "dev-latest"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "QodeNL\\LaravelPosthog\\PosthogServiceProvider"
+            ],
+            "aliases": {
+                "Posthog": "QodeNL\\LaravelPosthog\\Facades\\Posthog"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

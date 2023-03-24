@@ -1,0 +1,11 @@
+.idea
+.phpunit.cache
+build
+composer.lock
+coverage
+docs
+node_modules
+phpstan.neon
+phpunit.xml
+testbench.yaml
+vendor
