@@ -1,6 +1,8 @@
 # Laravel Posthog implementation
 
----
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/QodeNL/laravel-posthog.svg?style=flat-square)](https://packagist.org/packages/QodeNL/laravel-posthog)
+[![Total Downloads](https://img.shields.io/packagist/dt/QodeNL/laravel-posthog.svg?style=flat-square)](https://packagist.org/packages/QodeNL/laravel-posthog)
+
 This package provides a simple integration of Posthog in Laravel applications. 
 
 The small package covers both Identify as Capture (events) requests which can be triggered manual or automatically using an Event Listener. 
@@ -96,3 +98,7 @@ Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed re
 ## Credits
 
 - Christian Schoenmakers (Qode BV - Netherlands) (https://github.com/christianschoenmakers)
+
+## License
+
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.

@@ -6,6 +6,7 @@
             "QodeNL\\LaravelPosthog\\": "src/"
         }
     },
+    "license": "MIT",
     "authors": [
         {
             "name": "Christian Schoenmakers",
