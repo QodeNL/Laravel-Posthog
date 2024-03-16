@@ -22,7 +22,7 @@ class LaravelPosthog
 
     private function posthogEnabled(): bool
     {
-        if (!config('posthog.enabled')) {
+        if (!config('posthog.enabled') || config('posthog.key') === '') {
             return false;
         }
 
