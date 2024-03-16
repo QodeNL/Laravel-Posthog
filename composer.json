@@ -15,7 +15,12 @@
     ],
     "keywords": [
         "posthog",
-        "laravel"
+        "laravel",
+        "feature flags",
+        "a/b testing",
+        "analytics",
+        "events",
+        "product analytics"
     ],
     "require": {
         "php": "^8.0",
