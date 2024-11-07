@@ -2,6 +2,7 @@
 
 namespace QodeNL\LaravelPosthog\Traits;
 
+use Exception;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 
