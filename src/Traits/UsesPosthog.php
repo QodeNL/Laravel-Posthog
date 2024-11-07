@@ -1,14 +1,13 @@
 <?php
 
-namespace QodeNL\LaravelPosthog\Jobs;
+namespace QodeNL\LaravelPosthog\Traits;
 
-use Exception;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 
-class PosthogBaseJob
+trait UsesPosthog
 {
-    public function init(): void
+    public function posthogInit(): void
     {
         try {
             PostHog::init(config('posthog.key'),
