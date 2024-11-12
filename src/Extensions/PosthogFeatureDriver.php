@@ -23,10 +23,7 @@ class PosthogFeatureDriver implements Driver
     /**
      * Define an initial feature flag state resolver.
      */
-    public function define(string $feature, callable $resolver): void
-    {
-        return;
-    }
+    public function define(string $feature, callable $resolver): void {}
 
     /**
      * Retrieve the names of all defined features.
@@ -48,7 +45,6 @@ class PosthogFeatureDriver implements Driver
         return $results->toArray();
     }
 
-
     /**
      * Retrieve a feature flag's value.
      */
@@ -57,7 +53,7 @@ class PosthogFeatureDriver implements Driver
         return collect($scope)
             ->map(function ($scope) {
                 if ($scope instanceof Authenticatable) {
-                    return config('posthog.user_prefix', 'user') . ':' . $scope->getAuthIdentifier();
+                    return config('posthog.user_prefix', 'user').':'.$scope->getAuthIdentifier();
                 }
                 if ($scope instanceof Model) {
                     return Feature::serializeScope($scope);
@@ -85,7 +81,6 @@ class PosthogFeatureDriver implements Driver
             })
             ->toArray();
     }
-
 
     /**
      * Set a feature flag's value.

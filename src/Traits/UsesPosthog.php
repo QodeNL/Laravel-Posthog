@@ -15,7 +15,7 @@ trait UsesPosthog
                 ['host' => config('posthog.host')]
             );
         } catch (Exception $e) {
-            Log::error('Posthog initialization failed: ' . $e->getMessage());
+            Log::error('Posthog initialization failed: '.$e->getMessage());
         }
     }
 }

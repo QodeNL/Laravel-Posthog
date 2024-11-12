@@ -19,13 +19,13 @@ class LaravelPosthog
     public function __construct()
     {
         $this->sessionId = Auth::user()
-            ? config('posthog.user_prefix', 'user') . ':' . Auth::user()->id
+            ? config('posthog.user_prefix', 'user').':'.Auth::user()->id
             : sha1(session()->getId());
     }
 
     private function posthogEnabled(): bool
     {
-        if (!config('posthog.enabled') || config('posthog.key') === '') {
+        if (! config('posthog.enabled') || config('posthog.key') === '') {
             return false;
         }
 
@@ -115,5 +115,4 @@ class LaravelPosthog
 
         return [];
     }
-
 }

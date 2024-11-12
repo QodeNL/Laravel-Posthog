@@ -3,8 +3,8 @@
 namespace QodeNL\LaravelPosthog\Jobs;
 
 use Exception;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -20,9 +20,7 @@ class PosthogCaptureJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $event, private array $properties = [])
-    {
-    }
+    public function __construct(private string $sessionId, private string $event, private array $properties = []) {}
 
     public function handle(): void
     {
@@ -31,12 +29,11 @@ class PosthogCaptureJob implements ShouldQueue
         try {
             Posthog::capture([
                 'distinctId' => $this->sessionId,
-                'event'      => $this->event,
+                'event' => $this->event,
                 'properties' => $this->properties,
             ]);
         } catch (Exception $e) {
-            Log::info('Posthog capture call failed:' . $e->getMessage());
+            Log::info('Posthog capture call failed:'.$e->getMessage());
         }
     }
-
 }
