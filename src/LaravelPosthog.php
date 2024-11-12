@@ -6,26 +6,26 @@ use Auth;
 use Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
-use QodeNL\LaravelPosthog\Jobs\PosthogBaseJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
-use function Symfony\Component\Translation\t;
+use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
 class LaravelPosthog
 {
+    use UsesPosthog;
 
     protected string $sessionId;
 
     public function __construct()
     {
         $this->sessionId = Auth::user()
-            ? config('posthog.user_prefix', 'user') . ':' . Auth::user()->id
+            ? config('posthog.user_prefix', 'user').':'.Auth::user()->id
             : sha1(session()->getId());
     }
 
     private function posthogEnabled(): bool
     {
-        if (!config('posthog.enabled') || config('posthog.key') === '') {
+        if (! config('posthog.enabled') || config('posthog.key') === '') {
             return false;
         }
 
@@ -80,7 +80,7 @@ class LaravelPosthog
         array $groupProperties = [],
     ): null|bool|string {
         if ($this->posthogEnabled()) {
-            (new PosthogBaseJob())->init();
+            $this->posthogInit();
 
             return Posthog::getFeatureFlag(
                 $featureKey,
@@ -102,7 +102,7 @@ class LaravelPosthog
         array $groupProperties = [],
     ): array {
         if ($this->posthogEnabled()) {
-            (new PosthogBaseJob())->init();
+            $this->posthogInit();
 
             return Posthog::getAllFlags(
                 $this->sessionId,
@@ -115,5 +115,4 @@ class LaravelPosthog
 
         return [];
     }
-
 }

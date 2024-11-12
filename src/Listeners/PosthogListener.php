@@ -22,18 +22,18 @@ class PosthogListener
                 $parameterName = $property->getName();
 
                 $classType = $property->getType();
-                if (!$classType instanceof ReflectionNamedType) {
+                if (! $classType instanceof ReflectionNamedType) {
                     continue;
                 }
 
                 $className = $classType->getName();
 
-                if (!$className) {
+                if (! $className) {
                     continue;
                 }
-                $class = new $className();
+                $class = new $className;
 
-                if (!$class || !is_subclass_of($class, Model::class)) {
+                if (! $class || ! is_subclass_of($class, Model::class)) {
                     continue;
                 }
 
@@ -55,7 +55,7 @@ class PosthogListener
             }
         }
 
-        $posthog = new LaravelPosthog();
+        $posthog = new LaravelPosthog;
         $posthog->capture(
             get_class($event),
             $eventParameters
