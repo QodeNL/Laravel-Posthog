@@ -3,6 +3,7 @@
 namespace QodeNL\LaravelPosthog;
 
 use Illuminate\Support\ServiceProvider;
+use Laravel\Pennant\Feature;
 
 class PosthogServiceProvider extends ServiceProvider
 {
@@ -18,5 +19,7 @@ class PosthogServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/posthog.php' => config_path('posthog.php'),
         ]);
+
+        Feature::extend('posthog', fn () => new Extensions\PosthogFeatureDriver());
     }
 }

@@ -10,10 +10,15 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
+use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
-class PosthogAliasJob extends PosthogBaseJob implements ShouldQueue
+class PosthogAliasJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+    use UsesPosthog;
 
     public function __construct(private string $sessionId, private string $userId)
     {
@@ -21,7 +26,7 @@ class PosthogAliasJob extends PosthogBaseJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->init();
+        $this->posthogInit();
 
         try {
             Posthog::alias([

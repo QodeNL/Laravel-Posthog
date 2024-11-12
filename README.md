@@ -89,7 +89,28 @@ The Session ID argument will be assigned to the auto-generated ID of the user.
 Posthog::alias('Session ID here');
 ```
 
-### Feature flags
+## Feature flags
+
+### Laravel Pennant
+
+This package also includes a custom driver for the [Laravel Pennant](https://laravel.com/docs/11.x/pennant) package. With this custom driver, you can use Laravel Pennant and listen to the feature flags set in Posthog. 
+
+To use this driver, simply add the following to your .env file. You don't need to create the database migration.
+```text
+PENNANT_STORE=posthog
+```
+
+You can use the Laravel Pennant package as you would normally do. However, some features, like enabling a feature for a user, are not supported by the Posthog driver. A `PosthogFeatureException` will be thrown when you try to use these features.
+
+#### Example: Check if feature is enabled
+
+```php
+Laravel\Pennant\Feature::active('myFeatureFlagKey'); // true
+```
+
+### Check feature flags
+
+If you don't want to use Laravel Pennant, you can also implement the feature flags using our Facade:
 
 #### Get all feature flags
 
