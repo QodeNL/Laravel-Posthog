@@ -49,8 +49,8 @@ class PosthogListener
                     $modelAttributes = $modelAttributes->diff($hidden);
                 }
 
-                if ($modelAttributes->count() > 0) {
-                    $eventParameters[$parameterName] = $event->$parameterName->only($modelAttributes->toArray()) ?? [];
+                if ($modelAttributes->count() > 0 && $event->$parameterName) {
+                    $eventParameters[$parameterName] = $event->$parameterName?->only($modelAttributes->toArray()) ?? [];
                 }
             }
         }

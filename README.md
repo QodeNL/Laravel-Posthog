@@ -1,9 +1,13 @@
 # Laravel Posthog implementation
 
----
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/QodeNL/laravel-posthog.svg?style=flat-square)](https://packagist.org/packages/QodeNL/laravel-posthog)
+[![Total Downloads](https://img.shields.io/packagist/dt/QodeNL/laravel-posthog.svg?style=flat-square)](https://packagist.org/packages/QodeNL/laravel-posthog)
+
 This package provides a simple integration of Posthog in Laravel applications. 
 
-The small package covers both Identify as Capture (events) requests which can be triggered manual or automatically using an Event Listener. 
+The package covers both Identify as Capture (events) requests which can be triggered manual or automatically using an Event Listener. 
+
+You can also easily integrate Feature Flags within your application.
 
 This package uses the [PostHog / posthog-php](https://github.com/PostHog/posthog-php) package. For more information about Posthog, check their [documentation](https://posthog.com/docs).
 
@@ -85,9 +89,49 @@ The Session ID argument will be assigned to the auto-generated ID of the user.
 Posthog::alias('Session ID here');
 ```
 
+### Feature flags
+
+#### Get all feature flags
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::getAllFlags();
+```
+
+Get all feature flags with boolean if enabled for user or not.
+
+#### Check if feature is enabled
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::isFeatureEnabled('myFeatureFlagKey');
+```
+
+Check if feature is enabled for user. Returns boolean.
+
+#### Get feature flag
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::getFeatureFlag('myFeatureFlagKey');
+```
+
+Get feature flag. Returns `false` if feature is disabled. Returns `true` (or `payload` if set).  
+
+#### Optional attributes
+
+You can pass `groups`, `personProperties` and `groupProperties` to the isFeatureEnabled and getFeatureFlag functions. 
+
+Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#advanced-overriding-server-properties) for more information. 
+
+In the Posthog config you can configure if [events](https://posthog.com/docs/libraries/php#method-2-set-send_feature_flags-to-true) should be sent to Posthog and if you want to [evaluate events locally](https://posthog.com/docs/libraries/php#local-evaluation).
+
 ### Queue / jobs
 
-All above actions will be executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications.
+The capture, identify and alias actions are executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications.
 
 ## Changelog
 
@@ -96,3 +140,7 @@ Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed re
 ## Credits
 
 - Christian Schoenmakers (Qode BV - Netherlands) (https://github.com/christianschoenmakers)
+
+## License
+
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
