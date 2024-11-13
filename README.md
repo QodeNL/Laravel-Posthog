@@ -100,6 +100,16 @@ To use this driver, simply add the following to your .env file. You don't need t
 PENNANT_STORE=posthog
 ```
 
+Also, add the store to the `stores` array in `config/pennant.php`:
+
+```php
+    'stores' => [
+        'posthog' => [
+            'driver' => 'posthog',
+        ],
+    ],
+```
+
 You can use the Laravel Pennant package as you would normally do. However, some features, like enabling a feature for a user, are not supported by the Posthog driver. A `PosthogFeatureException` will be thrown when you try to use these features.
 
 #### Example: Check if feature is enabled
