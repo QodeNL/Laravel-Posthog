@@ -54,6 +54,9 @@ class PosthogFeatureDriver implements Driver
     {
         return collect($scope)
             ->map(function ($scope) {
+                if ($scope === null) {
+                    return null;
+                }
                 if (method_exists($scope, 'getPosthogIdentifier')) {
                     return $scope->getPosthogIdentifier();
                 }
