@@ -20,7 +20,7 @@ class PosthogIdentifyJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $email, private array $properties = []) {}
+    public function __construct(private string $sessionId, private string $email, private array $properties = [], private null|string|int|float $timestamp = null) {}
 
     public function handle(): void
     {
@@ -30,6 +30,7 @@ class PosthogIdentifyJob implements ShouldQueue
             Posthog::identify([
                 'distinctId' => $this->sessionId,
                 'properties' => ['email' => $this->email] + $this->properties,
+                'timestamp' => $this->timestamp,
             ]);
         } catch (Exception $e) {
             Log::info('Posthog identify call failed:'.$e->getMessage());

@@ -20,7 +20,7 @@ class PosthogAliasJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $userId) {}
+    public function __construct(private string $sessionId, private string $userId, private null|string|int|float $timestamp = null) {}
 
     public function handle(): void
     {
@@ -30,6 +30,7 @@ class PosthogAliasJob implements ShouldQueue
             Posthog::alias([
                 'distinctId' => $this->userId,
                 'alias' => $this->sessionId,
+                'timestamp' => $this->timestamp,
             ]);
         } catch (Exception $e) {
             Log::info('Posthog alias call failed:'.$e->getMessage());

@@ -20,7 +20,7 @@ class PosthogCaptureJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $event, private array $properties = []) {}
+    public function __construct(private string $sessionId, private string $event, private array $properties = [], private null|string|int|float $timestamp = null) {}
 
     public function handle(): void
     {
@@ -31,6 +31,7 @@ class PosthogCaptureJob implements ShouldQueue
                 'distinctId' => $this->sessionId,
                 'event' => $this->event,
                 'properties' => $this->properties,
+                'timestamp' => $this->timestamp,
             ]);
         } catch (Exception $e) {
             Log::info('Posthog capture call failed:'.$e->getMessage());
