@@ -6,6 +6,11 @@
             "QodeNL\\LaravelPosthog\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "QodeNL\\LaravelPosthog\\Tests\\": "tests/"
+        }
+    },
     "license": "MIT",
     "authors": [
         {
@@ -70,6 +75,7 @@
             "@php vendor/bin/testbench serve"
         ],
         "analyse": "vendor/bin/phpstan analyse",
-        "format": "vendor/bin/pint"
+        "format": "vendor/bin/pint",
+        "test": "vendor/bin/phpunit"
     }
 }
