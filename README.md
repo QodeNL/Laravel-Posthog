@@ -89,6 +89,34 @@ The Session ID argument will be assigned to the auto-generated ID of the user.
 Posthog::alias('Session ID here');
 ```
 
+### Group analytics
+
+You can associate events with a group (e.g. a company, team or project) by setting the group type and key. Once set, all subsequent `capture` calls will include the group automatically.
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::setGroup('company', 'company_id_5');
+
+Posthog::capture('page_view', ['url' => '/dashboard']); // includes the group
+```
+
+You can set multiple groups at once by chaining the method:
+
+```php
+Posthog::setGroup('company', 'company_id_5')->setGroup('project', 'project_id_8');
+```
+
+#### Group identify
+
+To create a new group, or update properties on a group, by using the `updateOrCreateGroup` method:
+
+```php
+Posthog::updateOrCreateGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'enterprise']);
+```
+
+For more information about group analytics, check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#group-analytics).
+
 ## Feature flags
 
 ### Laravel Pennant

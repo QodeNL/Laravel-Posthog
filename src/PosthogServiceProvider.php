@@ -9,7 +9,7 @@ class PosthogServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind('LaravelPosthog', function ($app) {
+        $this->app->singleton('LaravelPosthog', function ($app) {
             return new LaravelPosthog;
         });
     }

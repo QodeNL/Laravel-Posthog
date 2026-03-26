@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
-class PosthogCaptureJob implements ShouldQueue
+class PosthogGroupIdentifyJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -21,11 +21,9 @@ class PosthogCaptureJob implements ShouldQueue
     use UsesPosthog;
 
     public function __construct(
-        private string $sessionId,
-        private string $event,
+        private string $groupType,
+        private string $groupKey,
         private array $properties = [],
-        private null|string|int|float $timestamp = null,
-        private array $groups = []
     ) {}
 
     public function handle(): void
@@ -33,20 +31,13 @@ class PosthogCaptureJob implements ShouldQueue
         $this->posthogInit();
 
         try {
-            $payload = [
-                'distinctId' => $this->sessionId,
-                'event' => $this->event,
+            PostHog::groupIdentify([
+                'groupType' => $this->groupType,
+                'groupKey' => $this->groupKey,
                 'properties' => $this->properties,
-                'timestamp' => $this->timestamp,
-            ];
-
-            if (! empty($this->groups)) {
-                $payload['$groups'] = $this->groups;
-            }
-
-            PostHog::capture($payload);
+            ]);
         } catch (Exception $e) {
-            Log::info('Posthog capture call failed:'.$e->getMessage());
+            Log::info('Posthog groupIdentify call failed:'.$e->getMessage());
         }
     }
 }

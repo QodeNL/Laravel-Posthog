@@ -57,6 +57,38 @@ class PosthogCaptureJobTest extends TestCase
     #[Test]
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    public function handle_includes_groups_in_payload_when_provided(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('capture')->once()->with(Mockery::on(function ($args) {
+            return $args['distinctId'] === 'session-123'
+                && $args['event'] === 'test-event'
+                && $args['$groups'] === ['company' => 'id:5'];
+        }));
+
+        $job = new PosthogCaptureJob('session-123', 'test-event', [], null, ['company' => 'id:5']);
+        $job->handle();
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function handle_omits_groups_when_empty(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('capture')->once()->with(Mockery::on(function ($args) {
+            return ! array_key_exists('$groups', $args);
+        }));
+
+        $job = new PosthogCaptureJob('session-123', 'test-event');
+        $job->handle();
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function handle_catches_exception_and_logs(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');

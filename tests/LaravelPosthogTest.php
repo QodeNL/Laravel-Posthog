@@ -11,6 +11,7 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
+use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\LaravelPosthog;
 use QodeNL\LaravelPosthog\Tests\Stubs\TestUser;
@@ -86,6 +87,79 @@ class LaravelPosthogTest extends TestCase
         $sessionId = $reflection->getValue($instance);
 
         $this->assertSame(sha1(session()->getId()), $sessionId);
+    }
+
+    #[Test]
+    public function set_group_stores_group_and_returns_self(): void
+    {
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+        $result = $instance->setGroup('company', 'id:5');
+
+        $this->assertSame($instance, $result);
+        $this->assertSame(['company' => 'id:5'], $instance->getGroups());
+    }
+
+    #[Test]
+    public function set_group_supports_multiple_groups(): void
+    {
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+        $instance->setGroup('company', 'id:5')->setGroup('project', 'id:10');
+
+        $this->assertSame(['company' => 'id:5', 'project' => 'id:10'], $instance->getGroups());
+    }
+
+    #[Test]
+    public function capture_dispatches_job_with_groups(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+        $instance->setGroup('company', 'id:5');
+        $instance->capture('test-event', ['key' => 'value']);
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            $reflection = new \ReflectionProperty($job, 'groups');
+
+            return $reflection->getValue($job) === ['company' => 'id:5'];
+        });
+    }
+
+    #[Test]
+    public function group_identify_dispatches_job_when_enabled(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+        $instance->updateOrCreateGroup('company', 'id:5', ['name' => 'Acme Inc']);
+
+        Bus::assertDispatched(PosthogGroupIdentifyJob::class, function ($job) {
+            $type = (new \ReflectionProperty($job, 'groupType'))->getValue($job);
+            $key = (new \ReflectionProperty($job, 'groupKey'))->getValue($job);
+            $props = (new \ReflectionProperty($job, 'properties'))->getValue($job);
+
+            return $type === 'company' && $key === 'id:5' && $props === ['name' => 'Acme Inc'];
+        });
+    }
+
+    #[Test]
+    public function group_identify_does_not_dispatch_when_disabled(): void
+    {
+        Bus::fake();
+        Log::shouldReceive('debug')->once()->with('PosthogGroupIdentifyJob not dispatched because posthog is disabled');
+        Auth::shouldReceive('user')->andReturnNull();
+
+        config()->set('posthog.enabled', false);
+
+        $instance = new LaravelPosthog;
+        $instance->updateOrCreateGroup('company', 'id:5', ['name' => 'Acme Inc']);
+
+        Bus::assertNotDispatched(PosthogGroupIdentifyJob::class);
     }
 
     #[Test]

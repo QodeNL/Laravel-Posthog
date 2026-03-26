@@ -18,12 +18,12 @@ class PosthogServiceProviderTest extends TestCase
     }
 
     #[Test]
-    public function binding_creates_new_instance_each_time(): void
+    public function binding_returns_same_instance_each_time(): void
     {
         $first = $this->app->make('LaravelPosthog');
         $second = $this->app->make('LaravelPosthog');
 
-        $this->assertNotSame($first, $second);
+        $this->assertSame($first, $second);
     }
 
     #[Test]

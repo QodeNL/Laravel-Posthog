@@ -8,6 +8,7 @@ use Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
+use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
@@ -16,6 +17,8 @@ class LaravelPosthog
     use UsesPosthog;
 
     protected string $sessionId;
+
+    protected array $groups = [];
 
     protected static ?Closure $distinctIdResolver = null;
 
@@ -47,6 +50,18 @@ class LaravelPosthog
         return Auth::user()->id;
     }
 
+    public function setGroup(string $groupType, string $groupKey): self
+    {
+        $this->groups[$groupType] = $groupKey;
+
+        return $this;
+    }
+
+    public function getGroups(): array
+    {
+        return $this->groups;
+    }
+
     private function posthogEnabled(): bool
     {
         if (! config('posthog.enabled') || config('posthog.key') === '') {
@@ -68,9 +83,18 @@ class LaravelPosthog
     public function capture(string $event, array $properties = []): void
     {
         if ($this->posthogEnabled()) {
-            PosthogCaptureJob::dispatch($this->sessionId, $event, $properties);
+            PosthogCaptureJob::dispatch($this->sessionId, $event, $properties, null, $this->groups);
         } else {
             Log::debug('PosthogCaptureJob not dispatched because posthog is disabled');
+        }
+    }
+
+    public function updateOrCreateGroup(string $groupType, string $groupKey, array $properties = []): void
+    {
+        if ($this->posthogEnabled()) {
+            PosthogGroupIdentifyJob::dispatch($groupType, $groupKey, $properties);
+        } else {
+            Log::debug('PosthogGroupIdentifyJob not dispatched because posthog is disabled');
         }
     }
 
