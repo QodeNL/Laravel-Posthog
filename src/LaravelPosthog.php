@@ -32,7 +32,7 @@ class LaravelPosthog
         return true;
     }
 
-    public function identify(string $email, array $properties = []): void
+    public function identify(string $email = '', array $properties = []): void
     {
         if ($this->posthogEnabled()) {
             PosthogIdentifyJob::dispatch($this->sessionId, $email, $properties);
