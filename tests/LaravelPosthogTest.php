@@ -39,6 +39,7 @@ class LaravelPosthogTest extends TestCase
         $user->id = 42;
 
         Auth::shouldReceive('user')->andReturn($user);
+        Auth::shouldReceive('id')->andReturn(42);
         config()->set('posthog.user_prefix', 'user');
 
         $instance = new LaravelPosthog;
@@ -54,6 +55,7 @@ class LaravelPosthogTest extends TestCase
         $user->id = 42;
 
         Auth::shouldReceive('user')->andReturn($user);
+        Auth::shouldReceive('id')->andReturn(42);
         config()->set('posthog.user_prefix', '');
 
         $instance = new LaravelPosthog;
