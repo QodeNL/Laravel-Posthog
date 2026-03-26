@@ -73,7 +73,7 @@ class PosthogFeatureDriver implements Driver
                 }
 
                 try {
-                    $value = Posthog::getFeatureFlag(
+                    $value = PostHog::getFeatureFlag(
                         $feature,
                         $scope,
                         onlyEvaluateLocally: config('posthog.feature_flags.evaluate_locally') ?? false,

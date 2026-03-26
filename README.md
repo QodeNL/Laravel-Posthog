@@ -89,6 +89,40 @@ The Session ID argument will be assigned to the auto-generated ID of the user.
 Posthog::alias('Session ID here');
 ```
 
+### Group analytics
+
+You can associate events with a group (e.g. a company, team or project) by setting the group type and key. Once set, all subsequent `capture` calls will include the group automatically.
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::setGroup('company', 'company_id_5');
+
+Posthog::capture('page_view', ['url' => '/dashboard']); // includes the group
+```
+
+You can set multiple groups at once by chaining the method:
+
+```php
+Posthog::setGroup('company', 'company_id_5')->setGroup('project', 'project_id_8');
+```
+
+#### Group identify
+
+To create a new group, or update properties on a group, by using the `updateOrCreateGroup` method:
+
+```php
+Posthog::updateOrCreateGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'enterprise']);
+```
+
+You can also pass group properties as a third argument to `setGroup`. This will automatically call `updateOrCreateGroup` to sync the group properties with PostHog:
+
+```php
+Posthog::setGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'enterprise']);
+```
+
+For more information about group analytics, check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#group-analytics).
+
 ## Feature flags
 
 ### Laravel Pennant
@@ -159,6 +193,23 @@ You can pass `groups`, `personProperties` and `groupProperties` to the isFeature
 Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#advanced-overriding-server-properties) for more information. 
 
 In the Posthog config you can configure if [events](https://posthog.com/docs/libraries/php#method-2-set-send_feature_flags-to-true) should be sent to Posthog and if you want to [evaluate events locally](https://posthog.com/docs/libraries/php#local-evaluation).
+
+### Custom Distinct ID
+
+By default, the package generates a distinct ID based on the authenticated user ID (with an optional prefix) or a hashed session ID for anonymous users.
+
+If you want full control over the distinct ID, you can register a custom resolver. For example, in your `AppServiceProvider`:
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+public function boot(): void
+{
+    Posthog::resolveDistinctIdUsing(function () {
+        return auth()->id() ?? session()->getId();
+    });
+}
+```
 
 ### Queue / jobs
 

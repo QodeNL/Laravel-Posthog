@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
-class PosthogAliasJob implements ShouldQueue
+class PosthogGroupIdentifyJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -20,20 +20,24 @@ class PosthogAliasJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $userId, private null|string|int|float $timestamp = null) {}
+    public function __construct(
+        private string $groupType,
+        private string $groupKey,
+        private array $properties = [],
+    ) {}
 
     public function handle(): void
     {
         $this->posthogInit();
 
         try {
-            PostHog::alias([
-                'distinctId' => $this->userId,
-                'alias' => $this->sessionId,
-                'timestamp' => $this->timestamp,
+            PostHog::groupIdentify([
+                'groupType' => $this->groupType,
+                'groupKey' => $this->groupKey,
+                'properties' => $this->properties,
             ]);
         } catch (Exception $e) {
-            Log::info('Posthog alias call failed:'.$e->getMessage());
+            Log::info('Posthog groupIdentify call failed:'.$e->getMessage());
         }
     }
 }
