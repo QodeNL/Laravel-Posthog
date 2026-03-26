@@ -27,7 +27,7 @@ class PosthogAliasJob implements ShouldQueue
         $this->posthogInit();
 
         try {
-            Posthog::alias([
+            PostHog::alias([
                 'distinctId' => $this->userId,
                 'alias' => $this->sessionId,
                 'timestamp' => $this->timestamp,

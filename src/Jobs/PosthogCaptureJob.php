@@ -27,7 +27,7 @@ class PosthogCaptureJob implements ShouldQueue
         $this->posthogInit();
 
         try {
-            Posthog::capture([
+            PostHog::capture([
                 'distinctId' => $this->sessionId,
                 'event' => $this->event,
                 'properties' => $this->properties,

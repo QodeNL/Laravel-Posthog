@@ -41,7 +41,7 @@ class LaravelPosthog
     private function getUserIdentifier(): string
     {
         if (config('posthog.user_prefix', 'user')) {
-            return config('posthog.user_prefix', 'user') . ':' . Auth::user()->id;
+            return config('posthog.user_prefix', 'user').':'.Auth::user()->id;
         }
 
         return Auth::user()->id;
@@ -106,7 +106,7 @@ class LaravelPosthog
         if ($this->posthogEnabled()) {
             $this->posthogInit();
 
-            return Posthog::getFeatureFlag(
+            return PostHog::getFeatureFlag(
                 $featureKey,
                 $this->sessionId,
                 $groups,
@@ -128,7 +128,7 @@ class LaravelPosthog
         if ($this->posthogEnabled()) {
             $this->posthogInit();
 
-            return Posthog::getAllFlags(
+            return PostHog::getAllFlags(
                 $this->sessionId,
                 $groups,
                 $personProperties,

@@ -33,14 +33,14 @@ class PosthogIdentifyJob implements ShouldQueue
 
         $properties = $this->properties;
 
-        if($this->email !== '') {
+        if ($this->email !== '') {
             $properties = array_merge([
                 'email' => $this->email,
             ], $properties);
         }
 
         try {
-            Posthog::identify([
+            PostHog::identify([
                 'distinctId' => $this->sessionId,
                 'properties' => $properties,
                 'timestamp' => $this->timestamp,
