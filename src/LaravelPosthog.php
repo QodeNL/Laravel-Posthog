@@ -44,10 +44,10 @@ class LaravelPosthog
     private function getUserIdentifier(): string
     {
         if (config('posthog.user_prefix', 'user')) {
-            return config('posthog.user_prefix', 'user').':'.Auth::user()->id;
+            return config('posthog.user_prefix', 'user').':'.Auth::id();
         }
 
-        return Auth::user()->id;
+        return (string) Auth::id();
     }
 
     public function setGroup(string $groupType, string $groupKey): self

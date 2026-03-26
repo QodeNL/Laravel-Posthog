@@ -16,7 +16,7 @@ class PosthogListener
         $reflectionClass = new ReflectionClass(get_class($event));
         $reflectionClassProps = $reflectionClass->getConstructor()->getParameters();
 
-        if (is_array($reflectionClassProps) && count($reflectionClassProps) > 0) {
+        if (count($reflectionClassProps) > 0) {
             foreach ($reflectionClassProps as $property) {
 
                 $parameterName = $property->getName();
@@ -33,7 +33,7 @@ class PosthogListener
                 }
                 $class = new $className;
 
-                if (! $class || ! is_subclass_of($class, Model::class)) {
+                if (! is_subclass_of($class, Model::class)) {
                     continue;
                 }
 
@@ -44,13 +44,11 @@ class PosthogListener
                     $modelAttributes = collect($class->getFillable());
                 }
 
-                if (method_exists($class, 'getHidden')) {
-                    $hidden = collect($class->getHidden());
-                    $modelAttributes = $modelAttributes->diff($hidden);
-                }
+                $hidden = collect($class->getHidden());
+                $modelAttributes = $modelAttributes->diff($hidden);
 
                 if ($modelAttributes->count() > 0 && $event->$parameterName) {
-                    $eventParameters[$parameterName] = $event->$parameterName?->only($modelAttributes->toArray()) ?? [];
+                    $eventParameters[$parameterName] = $event->$parameterName->only($modelAttributes->toArray()) ?? [];
                 }
             }
         }
