@@ -160,6 +160,23 @@ Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/
 
 In the Posthog config you can configure if [events](https://posthog.com/docs/libraries/php#method-2-set-send_feature_flags-to-true) should be sent to Posthog and if you want to [evaluate events locally](https://posthog.com/docs/libraries/php#local-evaluation).
 
+### Custom Distinct ID
+
+By default, the package generates a distinct ID based on the authenticated user ID (with an optional prefix) or a hashed session ID for anonymous users.
+
+If you want full control over the distinct ID, you can register a custom resolver. For example, in your `AppServiceProvider`:
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+public function boot(): void
+{
+    Posthog::resolveDistinctIdUsing(function () {
+        return auth()->id() ?? session()->getId();
+    });
+}
+```
+
 ### Queue / jobs
 
 The capture, identify and alias actions are executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications.

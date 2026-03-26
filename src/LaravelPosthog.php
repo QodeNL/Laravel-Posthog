@@ -3,6 +3,7 @@
 namespace QodeNL\LaravelPosthog;
 
 use Auth;
+use Closure;
 use Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
@@ -16,11 +17,34 @@ class LaravelPosthog
 
     protected string $sessionId;
 
+    protected static ?Closure $distinctIdResolver = null;
+
     public function __construct()
     {
-        $this->sessionId = Auth::user()
-            ? config('posthog.user_prefix', 'user').':'.Auth::user()->id
+        $this->sessionId = static::$distinctIdResolver
+            ? call_user_func(static::$distinctIdResolver)
+            : $this->getDefaultDistinctId();
+    }
+
+    public static function resolveDistinctIdUsing(?Closure $callback): void
+    {
+        static::$distinctIdResolver = $callback;
+    }
+
+    private function getDefaultDistinctId(): string
+    {
+        return Auth::user()
+            ? $this->getUserIdentifier()
             : sha1(session()->getId());
+    }
+
+    private function getUserIdentifier(): string
+    {
+        if (config('posthog.user_prefix', 'user')) {
+            return config('posthog.user_prefix', 'user') . ':' . Auth::user()->id;
+        }
+
+        return Auth::user()->id;
     }
 
     private function posthogEnabled(): bool
