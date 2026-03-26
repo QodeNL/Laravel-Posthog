@@ -50,9 +50,13 @@ class LaravelPosthog
         return (string) Auth::id();
     }
 
-    public function setGroup(string $groupType, string $groupKey): self
+    public function setGroup(string $groupType, string $groupKey, array $properties = []): self
     {
         $this->groups[$groupType] = $groupKey;
+
+        if (! empty($properties)) {
+            $this->updateOrCreateGroup($groupType, $groupKey, $properties);
+        }
 
         return $this;
     }

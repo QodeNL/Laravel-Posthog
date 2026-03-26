@@ -115,6 +115,27 @@ class LaravelPosthogTest extends TestCase
     }
 
     #[Test]
+    public function set_group_with_properties_dispatches_group_identify_job(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+        $result = $instance->setGroup('company', 'id:5', ['name' => 'Acme Inc']);
+
+        $this->assertSame($instance, $result);
+        $this->assertSame(['company' => 'id:5'], $instance->getGroups());
+
+        Bus::assertDispatched(PosthogGroupIdentifyJob::class, function ($job) {
+            $type = (new \ReflectionProperty($job, 'groupType'))->getValue($job);
+            $key = (new \ReflectionProperty($job, 'groupKey'))->getValue($job);
+            $props = (new \ReflectionProperty($job, 'properties'))->getValue($job);
+
+            return $type === 'company' && $key === 'id:5' && $props === ['name' => 'Acme Inc'];
+        });
+    }
+
+    #[Test]
     public function capture_dispatches_job_with_groups(): void
     {
         Bus::fake();

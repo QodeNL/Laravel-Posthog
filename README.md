@@ -115,6 +115,12 @@ To create a new group, or update properties on a group, by using the `updateOrCr
 Posthog::updateOrCreateGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'enterprise']);
 ```
 
+You can also pass group properties as a third argument to `setGroup`. This will automatically call `updateOrCreateGroup` to sync the group properties with PostHog:
+
+```php
+Posthog::setGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'enterprise']);
+```
+
 For more information about group analytics, check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#group-analytics).
 
 ## Feature flags
