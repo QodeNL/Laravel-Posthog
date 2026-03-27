@@ -22,6 +22,30 @@ class PosthogGroupIdentifyJobTest extends TestCase
     }
 
     #[Test]
+    public function it_uses_default_queue(): void
+    {
+        config()->set('posthog.queue.queue', 'default');
+        config()->set('posthog.queue.connection', null);
+
+        $job = new PosthogGroupIdentifyJob('company', 'id:5');
+
+        $this->assertEquals('default', $job->queue);
+        $this->assertNull($job->connection);
+    }
+
+    #[Test]
+    public function it_uses_custom_queue_and_connection(): void
+    {
+        config()->set('posthog.queue.queue', 'posthog');
+        config()->set('posthog.queue.connection', 'redis');
+
+        $job = new PosthogGroupIdentifyJob('company', 'id:5');
+
+        $this->assertEquals('posthog', $job->queue);
+        $this->assertEquals('redis', $job->connection);
+    }
+
+    #[Test]
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     public function handle_calls_posthog_group_identify_with_correct_payload(): void

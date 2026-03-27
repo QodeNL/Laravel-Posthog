@@ -11,4 +11,9 @@ return [
         'send_events' => env('POSTHOG_FF_SEND_EVENTS', true),
         'evaluate_locally' => env('POSTHOG_FF_EVALUATE_LOCALLY', false),
     ],
+
+    'queue' => [
+        'connection' => env('POSTHOG_JOBS_CONNECTION', env('QUEUE_CONNECTION')),
+        'queue' => env('POSTHOG_JOBS_QUEUE', 'default'),
+    ],
 ];

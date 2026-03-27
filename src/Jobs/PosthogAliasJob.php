@@ -20,7 +20,19 @@ class PosthogAliasJob implements ShouldQueue
     use SerializesModels;
     use UsesPosthog;
 
-    public function __construct(private string $sessionId, private string $userId, private null|string|int|float $timestamp = null) {}
+    public function __construct(
+        private string $sessionId,
+        private string $userId,
+        private null|string|int|float $timestamp = null
+    ) {
+        if (config('posthog.queue.connection')) {
+            $this->onConnection(config('posthog.queue.connection'));
+        }
+
+        if (config('posthog.queue.queue')) {
+            $this->onQueue(config('posthog.queue.queue', 'default'));
+        }
+    }
 
     public function handle(): void
     {

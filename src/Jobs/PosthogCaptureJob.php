@@ -26,7 +26,15 @@ class PosthogCaptureJob implements ShouldQueue
         private array $properties = [],
         private null|string|int|float $timestamp = null,
         private array $groups = []
-    ) {}
+    ) {
+        if (config('posthog.queue.connection')) {
+            $this->onConnection(config('posthog.queue.connection'));
+        }
+
+        if (config('posthog.queue.queue')) {
+            $this->onQueue(config('posthog.queue.queue', 'default'));
+        }
+    }
 
     public function handle(): void
     {
