@@ -22,14 +22,14 @@ class PosthogGroupIdentifyJobTest extends TestCase
     }
 
     #[Test]
-    public function it_uses_default_queue(): void
+    public function it_leaves_queue_and_connection_unset_when_not_configured(): void
     {
-        config()->set('posthog.queue.queue', 'default');
+        config()->set('posthog.queue.queue', null);
         config()->set('posthog.queue.connection', null);
 
         $job = new PosthogGroupIdentifyJob('company', 'id:5');
 
-        $this->assertEquals('default', $job->queue);
+        $this->assertNull($job->queue);
         $this->assertNull($job->connection);
     }
 
