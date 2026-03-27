@@ -14,6 +14,6 @@ return [
 
     'queue' => [
         'connection' => env('POSTHOG_JOBS_CONNECTION', env('QUEUE_CONNECTION')),
-        'queue' => env('POSTHOG_JOBS_QUEUE', 'default'),
+        'queue' => env('POSTHOG_JOBS_QUEUE'),
     ],
 ];
