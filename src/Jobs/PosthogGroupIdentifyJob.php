@@ -24,7 +24,15 @@ class PosthogGroupIdentifyJob implements ShouldQueue
         private string $groupType,
         private string $groupKey,
         private array $properties = [],
-    ) {}
+    ) {
+        if (config('posthog.queue.connection')) {
+            $this->onConnection(config('posthog.queue.connection'));
+        }
+
+        if (config('posthog.queue.queue')) {
+            $this->onQueue(config('posthog.queue.queue', 'default'));
+        }
+    }
 
     public function handle(): void
     {
