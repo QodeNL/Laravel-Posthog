@@ -42,7 +42,7 @@ class PosthogFlagSnapshots
         array $personProperties,
         array $groupProperties,
     ): FeatureFlagEvaluations {
-        if (!$this->initialized) {
+        if (! $this->initialized) {
             $this->posthogInit();
             $this->initialized = true;
         }

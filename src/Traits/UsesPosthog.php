@@ -35,7 +35,7 @@ trait UsesPosthog
             'feature_flag_request_max_retries' => $this->posthogIntOption('posthog.feature_flags.request_max_retries'),
         ];
 
-        if (!(config('posthog.feature_flags.send_events') ?? true)) {
+        if (! (config('posthog.feature_flags.send_events') ?? true)) {
             $options['before_send'] = fn (array $event) => ($event['event'] ?? null) === '$feature_flag_called'
                 ? null
                 : $event;
