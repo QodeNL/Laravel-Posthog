@@ -299,8 +299,10 @@ class LaravelPosthogTest extends TestCase
     public function get_feature_flag_calls_sdk_when_enabled(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')->once()->andReturn('variant-a');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(['test-flag' => 'variant-a']));
 
         Auth::shouldReceive('user')->andReturnNull();
 
@@ -330,8 +332,10 @@ class LaravelPosthogTest extends TestCase
     public function is_feature_enabled_returns_bool(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')->once()->andReturn('variant-a');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(['test-flag' => 'variant-a']));
 
         Auth::shouldReceive('user')->andReturnNull();
 
@@ -356,6 +360,27 @@ class LaravelPosthogTest extends TestCase
         $result = $instance->getAllFlags();
 
         $this->assertSame(['flag1' => true, 'flag2' => 'variant-b'], $result);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function repeated_flag_checks_share_a_single_flags_request(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(['flag-a' => true, 'flag-b' => 'variant-b']));
+
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+
+        $this->assertTrue($instance->getFeatureFlag('flag-a'));
+        $this->assertSame('variant-b', $instance->getFeatureFlag('flag-b'));
+        $this->assertTrue($instance->isFeatureEnabled('flag-a'));
+        $this->assertNull($instance->getFeatureFlag('unknown-flag'));
     }
 
     #[Test]

@@ -7,8 +7,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Pennant\Contracts\Driver;
 use Laravel\Pennant\Feature;
-use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Exceptions\PosthogFeatureException;
+use QodeNL\LaravelPosthog\PosthogFlagSnapshots;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
 
 class PosthogFeatureDriver implements Driver
@@ -73,14 +73,7 @@ class PosthogFeatureDriver implements Driver
                 }
 
                 try {
-                    $value = PostHog::getFeatureFlag(
-                        $feature,
-                        $scope,
-                        onlyEvaluateLocally: config('posthog.feature_flags.evaluate_locally') ?? false,
-                        sendFeatureFlagEvents: config('posthog.feature_flags.send_events') ?? true,
-                    );
-
-                    return $value ?? false;
+                    return app(PosthogFlagSnapshots::class)->for($scope)->getFlag($feature) ?? false;
                 } catch (Exception $e) {
                     return config('posthog.feature_flags.default_enabled') ?? false;
                 }

@@ -132,17 +132,9 @@ class LaravelPosthog
         array $groupProperties = [],
     ): null|bool|string {
         if ($this->posthogEnabled()) {
-            $this->posthogInit();
-
-            return PostHog::getFeatureFlag(
-                $featureKey,
-                $this->sessionId,
-                $groups,
-                $personProperties,
-                $groupProperties,
-                config('posthog.feature_flags.evaluate_locally') ?? false,
-                config('posthog.feature_flags.send_events') ?? true,
-            );
+            return app(PosthogFlagSnapshots::class)
+                ->for($this->sessionId, $groups, $personProperties, $groupProperties)
+                ->getFlag($featureKey);
         }
 
         return config('posthog.feature_flags.default_enabled') ?? false;

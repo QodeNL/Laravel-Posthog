@@ -20,11 +20,11 @@ class PosthogFeatureDriverTest extends TestCase
     public function get_resolves_scope_with_posthog_identifier(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
             ->once()
-            ->with('test-flag', 'custom-scope-id', Mockery::any(), Mockery::any())
-            ->andReturn(true);
+            ->with('custom-scope-id', [], [], [], false)
+            ->andReturn($this->fakeFlagSnapshot(['test-flag' => true]));
 
         $driver = new PosthogFeatureDriver;
         $scope = new TestScopeWithPosthogIdentifier;
@@ -40,11 +40,11 @@ class PosthogFeatureDriverTest extends TestCase
     public function get_resolves_authenticatable_scope_with_prefix(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
             ->once()
-            ->with('test-flag', 'user:99', Mockery::any(), Mockery::any())
-            ->andReturn('variant-a');
+            ->with('user:99', [], [], [], false)
+            ->andReturn($this->fakeFlagSnapshot(['test-flag' => 'variant-a']));
 
         config()->set('posthog.user_prefix', 'user');
 
@@ -64,7 +64,7 @@ class PosthogFeatureDriverTest extends TestCase
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
         $mock->shouldReceive('init')->once();
-        $mock->shouldNotReceive('getFeatureFlag');
+        $mock->shouldNotReceive('evaluateFlags');
 
         $driver = new PosthogFeatureDriver;
         $result = $driver->get('test-flag', [null]);
@@ -78,8 +78,8 @@ class PosthogFeatureDriverTest extends TestCase
     public function get_returns_default_enabled_on_sdk_exception(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')->once()->andThrow(new \Exception('SDK error'));
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')->once()->andThrow(new \Exception('SDK error'));
 
         config()->set('posthog.feature_flags.default_enabled', true);
 
@@ -98,8 +98,12 @@ class PosthogFeatureDriverTest extends TestCase
     public function get_all_maps_over_get(): void
     {
         $mock = Mockery::mock('alias:PostHog\PostHog');
-        $mock->shouldReceive('init')->once();
-        $mock->shouldReceive('getFeatureFlag')->twice()->andReturn(true, false);
+        $mock->shouldReceive('init')->atLeast()->once();
+        // One snapshot per distinct id, reused across features, so getAll() no longer costs
+        // one /flags request per feature.
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(['flag-a' => true, 'flag-b' => false]));
 
         $user = new TestUser;
         $user->id = 1;
@@ -112,6 +116,32 @@ class PosthogFeatureDriverTest extends TestCase
 
         $this->assertArrayHasKey('flag-a', $result);
         $this->assertArrayHasKey('flag-b', $result);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function each_distinct_id_gets_its_own_snapshot(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->with('user:1', [], [], [], false)
+            ->andReturn($this->fakeFlagSnapshot(['test-flag' => true]));
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->with('user:2', [], [], [], false)
+            ->andReturn($this->fakeFlagSnapshot([]));
+
+        $first = new TestUser;
+        $first->id = 1;
+        $second = new TestUser;
+        $second->id = 2;
+
+        $driver = new PosthogFeatureDriver;
+
+        $this->assertSame([true, false], $driver->get('test-flag', [$first, $second]));
     }
 
     #[Test]

@@ -2,13 +2,23 @@
 
 namespace QodeNL\LaravelPosthog\Tests;
 
+use Mockery;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use PostHog\FeatureFlagEvaluations;
 use QodeNL\LaravelPosthog\Facades\Posthog;
 use QodeNL\LaravelPosthog\LaravelPosthog;
 use QodeNL\LaravelPosthog\PosthogServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function fakeFlagSnapshot(array $flags): FeatureFlagEvaluations
+    {
+        $snapshot = Mockery::mock(FeatureFlagEvaluations::class);
+        $snapshot->shouldReceive('getFlag')->andReturnUsing(fn (string $key) => $flags[$key] ?? null);
+
+        return $snapshot;
+    }
+
     protected function getPackageProviders($app): array
     {
         return [

@@ -194,6 +194,44 @@ Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/
 
 In the Posthog config you can configure if [events](https://posthog.com/docs/libraries/php#method-2-set-send_feature_flags-to-true) should be sent to Posthog and if you want to [evaluate events locally](https://posthog.com/docs/libraries/php#local-evaluation).
 
+#### Local evaluation
+
+[Local evaluation](https://posthog.com/docs/libraries/php#local-evaluation) needs a credential that can read your flag definitions, which is separate from your project API key. Set both to use it:
+
+```bash
+POSTHOG_FF_EVALUATE_LOCALLY=true
+POSTHOG_SECRET_KEY=phx_your_personal_api_key
+```
+
+`POSTHOG_SECRET_KEY` accepts a personal API key (`phx_...`) or a project secret key (`phs_...`). Without it the SDK cannot fetch flag definitions, so every flag evaluates to `false`.
+
+#### One request per distinct ID
+
+Flags are resolved with a single `/flags` request per distinct ID, and the result is cached for the remainder of the request. Checking twenty flags for the same user costs one HTTP call, whether you go through Pennant or the facade. The cache is bound to the request, so long-lived workers (Octane, queues) start each request with fresh flags.
+
+### Tuning the SDK
+
+Timeouts, batching and the HTTP consumer can be configured through `config/posthog.php`, or the matching env variables:
+
+```bash
+POSTHOG_TIMEOUT=10000                  # ms
+POSTHOG_BATCH_SIZE=100                 # events per batch
+POSTHOG_MAX_QUEUE_SIZE=10000           # events
+POSTHOG_FLUSH_INTERVAL_SECONDS=5
+POSTHOG_COMPRESS_REQUEST=false
+POSTHOG_CONSUMER=lib_curl              # socket, file, fork_curl, lib_curl, noop
+POSTHOG_FF_REQUEST_TIMEOUT_MS=3000
+POSTHOG_FF_REQUEST_MAX_RETRIES=1
+```
+
+Anything you leave unset keeps the SDK default. For options without a dedicated config key, use the `options` array in `config/posthog.php`, which is merged last:
+
+```php
+'options' => [
+    'verify_batch_events_request' => false,
+],
+```
+
 ### Custom Distinct ID
 
 By default, the package generates a distinct ID based on the authenticated user ID (with an optional prefix) or a hashed session ID for anonymous users.

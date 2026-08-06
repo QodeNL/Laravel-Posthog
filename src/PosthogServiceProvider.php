@@ -12,6 +12,8 @@ class PosthogServiceProvider extends ServiceProvider
         $this->app->scoped('LaravelPosthog', function ($app) {
             return new LaravelPosthog;
         });
+
+        $this->app->scoped(PosthogFlagSnapshots::class);
     }
 
     public function boot(): void
