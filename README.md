@@ -299,6 +299,31 @@ public function boot(): void
 }
 ```
 
+### User IP address
+
+Events are sent from a queue job, so Posthog sees the server's IP address and resolves GeoIP to the server's location. Enable `capture_ip` to send the visitor's IP as `$ip` on capture and identify calls and on captured exceptions:
+
+```bash
+POSTHOG_CAPTURE_IP=true
+```
+
+The IP is read from `request()->ip()` when the event is dispatched. Nothing is added in the console (queue workers, artisan commands), and an explicit `$ip` in the event properties always wins.
+
+Behind a reverse proxy or load balancer, `request()->ip()` returns the proxy's IP unless you [trust the proxy](https://laravel.com/docs/requests#configuring-trusted-proxies). Alternatively, resolve the IP yourself, for example from Cloudflare's `CF-Connecting-IP` header:
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+public function boot(): void
+{
+    Posthog::resolveIpUsing(function () {
+        return request()->header('CF-Connecting-IP') ?? request()->ip();
+    });
+}
+```
+
+The resolver only runs when `capture_ip` is enabled. Return `null` to send no IP.
+
 ### Queue / jobs
 
 The capture, identify and alias actions are executed by jobs. Be sure you've enabled and configured [queues](https://laravel.com/docs/10.x/queues) for your applications.

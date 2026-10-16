@@ -17,4 +17,9 @@ class Posthog extends Facade
     {
         LaravelPosthog::resolveDistinctIdUsing($callback);
     }
+
+    public static function resolveIpUsing(?Closure $callback): void
+    {
+        LaravelPosthog::resolveIpUsing($callback);
+    }
 }

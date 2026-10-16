@@ -12,6 +12,8 @@ return [
 
     'user_prefix' => 'user',
 
+    'capture_ip' => env('POSTHOG_CAPTURE_IP', false),
+
     'feature_flags' => [
         'default_enabled' => env('POSTHOG_FF_DEFAULT_ENABLED', false),
         'send_events' => env('POSTHOG_FF_SEND_EVENTS', true),

@@ -56,6 +56,7 @@ abstract class TestCase extends BaseTestCase
     protected function tearDown(): void
     {
         LaravelPosthog::resolveDistinctIdUsing(null);
+        LaravelPosthog::resolveIpUsing(null);
         PosthogClient::reset();
 
         parent::tearDown();

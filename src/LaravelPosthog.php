@@ -24,6 +24,8 @@ class LaravelPosthog
 
     protected static ?Closure $distinctIdResolver = null;
 
+    protected static ?Closure $ipResolver = null;
+
     public function __construct()
     {
         $this->sessionId = static::$distinctIdResolver
@@ -34,6 +36,11 @@ class LaravelPosthog
     public static function resolveDistinctIdUsing(?Closure $callback): void
     {
         static::$distinctIdResolver = $callback;
+    }
+
+    public static function resolveIpUsing(?Closure $callback): void
+    {
+        static::$ipResolver = $callback;
     }
 
     private function getDefaultDistinctId(): string
@@ -50,6 +57,28 @@ class LaravelPosthog
         }
 
         return (string) Auth::id();
+    }
+
+    private function getIp(): ?string
+    {
+        if (static::$ipResolver) {
+            return call_user_func(static::$ipResolver);
+        }
+
+        return app()->runningInConsole() ? null : request()->ip();
+    }
+
+    private function prepareProperties(array $properties): array
+    {
+        if (config('posthog.capture_ip', false) && ! array_key_exists('$ip', $properties)) {
+            $ip = $this->getIp();
+
+            if ($ip !== null && $ip !== '') {
+                $properties['$ip'] = $ip;
+            }
+        }
+
+        return $properties;
     }
 
     public function setGroup(string $groupType, string $groupKey, array $properties = []): self
@@ -80,7 +109,7 @@ class LaravelPosthog
     public function identify(string $email = '', array $properties = []): void
     {
         if ($this->posthogEnabled()) {
-            PosthogIdentifyJob::dispatch($this->sessionId, $email, $properties);
+            PosthogIdentifyJob::dispatch($this->sessionId, $email, $this->prepareProperties($properties));
         } else {
             Log::debug('PosthogIdentifyJob not dispatched because posthog is disabled');
         }
@@ -89,7 +118,7 @@ class LaravelPosthog
     public function capture(string $event, array $properties = []): void
     {
         if ($this->posthogEnabled()) {
-            PosthogCaptureJob::dispatch($this->sessionId, $event, $properties, null, $this->groups);
+            PosthogCaptureJob::dispatch($this->sessionId, $event, $this->prepareProperties($properties), null, $this->groups);
         } else {
             Log::debug('PosthogCaptureJob not dispatched because posthog is disabled');
         }
@@ -128,7 +157,7 @@ class LaravelPosthog
         }
 
         try {
-            PostHog::captureException($exception, $this->sessionId, $properties);
+            PostHog::captureException($exception, $this->sessionId, $this->prepareProperties($properties));
         } catch (Exception $e) {
             Log::info('Posthog captureException call failed: '.$e->getMessage());
         }
