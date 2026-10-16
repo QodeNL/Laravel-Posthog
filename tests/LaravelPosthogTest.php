@@ -15,6 +15,7 @@ use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\LaravelPosthog;
 use QodeNL\LaravelPosthog\Tests\Stubs\TestUser;
+use RuntimeException;
 
 class LaravelPosthogTest extends TestCase
 {
@@ -291,6 +292,60 @@ class LaravelPosthogTest extends TestCase
         $instance->alias('user-456');
 
         Bus::assertNotDispatched(PosthogAliasJob::class);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_sends_with_distinct_id_groups_and_properties(): void
+    {
+        $exception = new RuntimeException('boom');
+
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('captureException')
+            ->once()
+            ->with($exception, 'user:42', ['source' => 'checkout', '$groups' => ['company' => 'company_id_5']])
+            ->andReturnTrue();
+
+        $user = new TestUser;
+        $user->id = 42;
+        Auth::shouldReceive('user')->andReturn($user);
+        Auth::shouldReceive('id')->andReturn(42);
+
+        $instance = new LaravelPosthog;
+        $instance->setGroup('company', 'company_id_5');
+        $instance->captureException($exception, ['source' => 'checkout']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_logs_and_swallows_sdk_errors(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('captureException')->once()->andThrow(new \Exception('SDK down'));
+
+        Auth::shouldReceive('user')->andReturnNull();
+        Log::shouldReceive('info')->once()->with('Posthog captureException call failed: SDK down');
+
+        (new LaravelPosthog)->captureException(new RuntimeException('boom'));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_does_nothing_when_disabled(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldNotReceive('init');
+        $mock->shouldNotReceive('captureException');
+
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.enabled', false);
+
+        (new LaravelPosthog)->captureException(new RuntimeException('boom'));
     }
 
     #[Test]

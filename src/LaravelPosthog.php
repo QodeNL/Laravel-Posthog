@@ -4,6 +4,7 @@ namespace QodeNL\LaravelPosthog;
 
 use Auth;
 use Closure;
+use Exception;
 use Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
@@ -11,6 +12,7 @@ use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
+use Throwable;
 
 class LaravelPosthog
 {
@@ -108,6 +110,27 @@ class LaravelPosthog
             PosthogAliasJob::dispatch($this->sessionId, $userId);
         } else {
             Log::debug('PosthogAliasJob not dispatched because posthog is disabled');
+        }
+    }
+
+    public function captureException(Throwable $exception, array $properties = []): void
+    {
+        if (! $this->posthogEnabled()) {
+            Log::debug('Posthog exception not captured because posthog is disabled');
+
+            return;
+        }
+
+        $this->posthogInit();
+
+        if (! empty($this->groups)) {
+            $properties['$groups'] = $this->groups;
+        }
+
+        try {
+            PostHog::captureException($exception, $this->sessionId, $properties);
+        } catch (Exception $e) {
+            Log::info('Posthog captureException call failed: '.$e->getMessage());
         }
     }
 

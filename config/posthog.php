@@ -31,6 +31,10 @@ return [
 
     'options' => [],
 
+    'error_tracking' => [
+        'enabled' => env('POSTHOG_ERROR_TRACKING_ENABLED', false),
+    ],
+
     'queue' => [
         'connection' => env('POSTHOG_JOBS_CONNECTION', env('QUEUE_CONNECTION')),
         'queue' => env('POSTHOG_JOBS_QUEUE'),

@@ -2,6 +2,7 @@
 
 namespace QodeNL\LaravelPosthog;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pennant\Feature;
 
@@ -23,5 +24,20 @@ class PosthogServiceProvider extends ServiceProvider
         ]);
 
         Feature::extend('posthog', fn () => new Extensions\PosthogFeatureDriver);
+
+        $this->registerExceptionReporting();
+    }
+
+    private function registerExceptionReporting(): void
+    {
+        if (! config('posthog.error_tracking.enabled')) {
+            return;
+        }
+
+        $this->callAfterResolving(ExceptionHandler::class, function ($handler) {
+            if (method_exists($handler, 'reportable')) {
+                $handler->reportable(new PosthogExceptionReporter);
+            }
+        });
     }
 }

@@ -123,6 +123,36 @@ Posthog::setGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'e
 
 For more information about group analytics, check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#group-analytics).
 
+## Error tracking
+
+### Report exceptions automatically
+
+Enable error tracking to send every exception that reaches Laravel's exception handler to [Posthog error tracking](https://posthog.com/docs/error-tracking):
+
+```bash
+POSTHOG_ERROR_TRACKING_ENABLED=true
+```
+
+This includes uncaught exceptions and everything you pass to `report()`. Exceptions Laravel doesn't report (such as `dontReport`, validation and 404 exceptions) are not sent either. The exception is linked to the same distinct ID as your other events. If that ID can't be resolved, for example because the database is down, the exception is sent anonymously.
+
+Don't enable the SDK's own `error_tracking.enabled` option through `posthog.options`. It installs PHP's global exception handlers, which conflict with Laravel's.
+
+### Capture exceptions manually
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+try {
+    // ...
+} catch (Throwable $e) {
+    Posthog::captureException($e, ['order_id' => $order->id]);
+}
+```
+
+Groups set with `setGroup` are included. Exceptions are sent directly instead of through a job, because an exception can't be put on the queue.
+
+Set a [release ID](#release-id) to link exceptions to the release they happened in.
+
 ## Feature flags
 
 ### Laravel Pennant
