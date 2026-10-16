@@ -384,6 +384,41 @@ class LaravelPosthogTest extends TestCase
     }
 
     #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function get_feature_flag_payload_reads_from_the_shared_snapshot(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(
+                ['test-flag' => 'variant-a'],
+                ['test-flag' => ['color' => 'blue']],
+            ));
+
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+
+        $this->assertSame('variant-a', $instance->getFeatureFlag('test-flag'));
+        $this->assertSame(['color' => 'blue'], $instance->getFeatureFlagPayload('test-flag'));
+        $this->assertNull($instance->getFeatureFlagPayload('unknown-flag'));
+    }
+
+    #[Test]
+    public function get_feature_flag_payload_returns_null_when_disabled(): void
+    {
+        Auth::shouldReceive('user')->andReturnNull();
+
+        config()->set('posthog.enabled', false);
+
+        $instance = new LaravelPosthog;
+
+        $this->assertNull($instance->getFeatureFlagPayload('test-flag'));
+    }
+
+    #[Test]
     public function get_all_flags_returns_empty_array_when_disabled(): void
     {
         Auth::shouldReceive('user')->andReturnNull();

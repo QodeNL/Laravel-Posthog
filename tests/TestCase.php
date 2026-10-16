@@ -12,10 +12,11 @@ use QodeNL\LaravelPosthog\PosthogServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
-    protected function fakeFlagSnapshot(array $flags): FeatureFlagEvaluations
+    protected function fakeFlagSnapshot(array $flags, array $payloads = []): FeatureFlagEvaluations
     {
         $snapshot = Mockery::mock(FeatureFlagEvaluations::class);
         $snapshot->shouldReceive('getFlag')->andReturnUsing(fn (string $key) => $flags[$key] ?? null);
+        $snapshot->shouldReceive('getFlagPayload')->andReturnUsing(fn (string $key) => $payloads[$key] ?? null);
 
         return $snapshot;
     }

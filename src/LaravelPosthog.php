@@ -140,6 +140,21 @@ class LaravelPosthog
         return config('posthog.feature_flags.default_enabled') ?? false;
     }
 
+    public function getFeatureFlagPayload(
+        string $featureKey,
+        array $groups = [],
+        array $personProperties = [],
+        array $groupProperties = [],
+    ): mixed {
+        if ($this->posthogEnabled()) {
+            return app(PosthogFlagSnapshots::class)
+                ->for($this->sessionId, $groups, $personProperties, $groupProperties)
+                ->getFlagPayload($featureKey);
+        }
+
+        return null;
+    }
+
     public function getAllFlags(
         array $groups = [],
         array $personProperties = [],

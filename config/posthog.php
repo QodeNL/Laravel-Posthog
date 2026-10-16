@@ -8,6 +8,8 @@ return [
     // Only required when Feature Flag evaluate_locally is enabled
     'secret_key' => env('POSTHOG_SECRET_KEY'),
 
+    'release_id' => env('POSTHOG_RELEASE_ID'),
+
     'user_prefix' => 'user',
 
     'feature_flags' => [

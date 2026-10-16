@@ -184,11 +184,21 @@ use QodeNL\LaravelPosthog\Facades\Posthog;
 Posthog::getFeatureFlag('myFeatureFlagKey');
 ```
 
-Get feature flag. Returns `false` if feature is disabled. Returns `true` (or `payload` if set).  
+Get feature flag. Returns `false` if feature is disabled. Returns `true`, or the variant key for multivariate flags.
+
+#### Get feature flag payload
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::getFeatureFlagPayload('myFeatureFlagKey'); // ['color' => 'blue']
+```
+
+Get the decoded JSON payload of a feature flag. Returns `null` if the flag has no payload, doesn't exist or Posthog is disabled. The payload comes from the same cached evaluation as `getFeatureFlag`, so it doesn't cost an extra request.
 
 #### Optional attributes
 
-You can pass `groups`, `personProperties` and `groupProperties` to the isFeatureEnabled and getFeatureFlag functions. 
+You can pass `groups`, `personProperties` and `groupProperties` to the isFeatureEnabled, getFeatureFlag and getFeatureFlagPayload functions. 
 
 Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#advanced-overriding-server-properties) for more information. 
 
@@ -231,6 +241,16 @@ Anything you leave unset keeps the SDK default. For options without a dedicated 
     'verify_batch_events_request' => false,
 ],
 ```
+
+### Release ID
+
+Set a release ID to send it as `$release_id` on every event. Posthog error tracking uses it to link exceptions to a release. Create the release and get its ID with `posthog-cli release resolve` during your deploy.
+
+```bash
+POSTHOG_RELEASE_ID=
+```
+
+An explicit `$release_id` in the event properties always wins.
 
 ### Custom Distinct ID
 

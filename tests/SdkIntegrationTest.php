@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Extensions\PosthogFeatureDriver;
+use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
 use QodeNL\LaravelPosthog\LaravelPosthog;
 use QodeNL\LaravelPosthog\Tests\Stubs\TestUser;
 
@@ -29,6 +30,7 @@ class SdkIntegrationTest extends TestCase
             $posthog = new LaravelPosthog;
             $posthog->getFeatureFlag('some-flag');
             $posthog->isFeatureEnabled('some-flag');
+            $posthog->getFeatureFlagPayload('some-flag');
             $posthog->getAllFlags();
 
             (new PosthogFeatureDriver)->getAll(['flag-a' => [$user], 'flag-b' => [$user]]);
@@ -59,8 +61,29 @@ class SdkIntegrationTest extends TestCase
 
         $this->assertNull($posthog->getFeatureFlag('some-flag'));
         $this->assertFalse($posthog->isFeatureEnabled('some-flag'));
+        $this->assertNull($posthog->getFeatureFlagPayload('some-flag'));
         $this->assertSame([], $posthog->getAllFlags());
         $this->assertSame([false], (new PosthogFeatureDriver)->get('some-flag', [$user]));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function configured_release_id_reaches_the_sent_event(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'posthog');
+
+        config()->set('posthog.release_id', 'rel_123');
+        config()->set('posthog.client.consumer', 'file');
+        config()->set('posthog.options', ['filename' => $file]);
+
+        (new PosthogCaptureJob('user:1', 'ordinary'))->handle();
+        PostHog::flush();
+
+        $sent = json_decode(trim((string) file_get_contents($file)), true);
+        unlink($file);
+
+        $this->assertSame('rel_123', $sent['properties']['$release_id']);
     }
 
     /**
