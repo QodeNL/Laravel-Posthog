@@ -127,7 +127,7 @@ For more information about group analytics, check the [Posthog PHP documentation
 
 ### Laravel Pennant
 
-This package also includes a custom driver for the [Laravel Pennant](https://laravel.com/docs/11.x/pennant) package. With this custom driver, you can use Laravel Pennant and listen to the feature flags set in Posthog. 
+This package also includes a custom driver for the [Laravel Pennant](https://laravel.com/docs/13.x/pennant) package. With this custom driver, you can use Laravel Pennant and listen to the feature flags set in Posthog. 
 
 To use this driver, simply add the following to your .env file. You don't need to create the database migration.
 ```text
