@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-16
+
+### Removed
+
+- Laravel 11 support. Laravel 11 no longer receives security fixes; the package now requires Laravel 12 or 13.
+
+### Changed
+
+- Upgraded `posthog/posthog-php` from `^4.13` to `^4.14`. Feature flag payloads now resolve during local
+  evaluation, and local evaluation matches the flags service more closely.
+
+### Added
+
+- `Posthog::getFeatureFlagPayload()` returns the decoded payload of a flag. It reads from the same cached
+  evaluation as `getFeatureFlag()`, so it costs no extra `/flags` request, and works with local evaluation.
+- `POSTHOG_RELEASE_ID` (`posthog.release_id`) is sent as `$release_id` on every event, including
+  `$feature_flag_called`. Unlike the SDK's own `POSTHOG_RELEASE_ID` support, this works with `config:cache`
+  and under PHP-FPM without `clear_env = no`. An explicit `$release_id` in the event properties wins.
+- Error tracking. `Posthog::captureException()` sends an exception with the current distinct ID and groups.
+  Set `POSTHOG_ERROR_TRACKING_ENABLED=true` (`posthog.error_tracking.enabled`) to report every exception
+  that reaches Laravel's exception handler. Exceptions Laravel doesn't report are skipped, and an exception is
+  sent anonymously when the distinct ID can't be resolved.
+- `POSTHOG_CAPTURE_IP` (`posthog.capture_ip`, default `false`) sends the visitor's IP as `$ip` on capture,
+  identify and captured exceptions, so GeoIP resolves to the user instead of the server running the queue worker. The IP is taken from
+  `request()->ip()` at dispatch time, or from `Posthog::resolveIpUsing()` for proxies such as Cloudflare.
+  An explicit `$ip` in the event properties wins.
+
 ## [1.4.0] - 2026-08-06
 
 ### Changed
