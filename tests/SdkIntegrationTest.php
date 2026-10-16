@@ -8,8 +8,11 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Extensions\PosthogFeatureDriver;
+use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
 use QodeNL\LaravelPosthog\LaravelPosthog;
+use QodeNL\LaravelPosthog\PosthogServiceProvider;
 use QodeNL\LaravelPosthog\Tests\Stubs\TestUser;
+use RuntimeException;
 
 class SdkIntegrationTest extends TestCase
 {
@@ -29,6 +32,7 @@ class SdkIntegrationTest extends TestCase
             $posthog = new LaravelPosthog;
             $posthog->getFeatureFlag('some-flag');
             $posthog->isFeatureEnabled('some-flag');
+            $posthog->getFeatureFlagPayload('some-flag');
             $posthog->getAllFlags();
 
             (new PosthogFeatureDriver)->getAll(['flag-a' => [$user], 'flag-b' => [$user]]);
@@ -59,8 +63,60 @@ class SdkIntegrationTest extends TestCase
 
         $this->assertNull($posthog->getFeatureFlag('some-flag'));
         $this->assertFalse($posthog->isFeatureEnabled('some-flag'));
+        $this->assertNull($posthog->getFeatureFlagPayload('some-flag'));
         $this->assertSame([], $posthog->getAllFlags());
         $this->assertSame([false], (new PosthogFeatureDriver)->get('some-flag', [$user]));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function configured_release_id_reaches_the_sent_event(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'posthog');
+
+        config()->set('posthog.release_id', 'rel_123');
+        config()->set('posthog.client.consumer', 'file');
+        config()->set('posthog.options', ['filename' => $file]);
+
+        (new PosthogCaptureJob('user:1', 'ordinary'))->handle();
+        PostHog::flush();
+
+        $sent = json_decode(trim((string) file_get_contents($file)), true);
+        unlink($file);
+
+        $this->assertSame('rel_123', $sent['properties']['$release_id']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function reported_exceptions_reach_the_sent_event(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'posthog');
+
+        config()->set('posthog.error_tracking.enabled', true);
+        config()->set('posthog.client.consumer', 'file');
+        config()->set('posthog.options', ['filename' => $file]);
+
+        // Register the hook again now that error tracking is enabled.
+        (new PosthogServiceProvider($this->app))->boot();
+
+        $user = new TestUser;
+        $user->id = 7;
+        Auth::shouldReceive('user')->andReturn($user);
+        Auth::shouldReceive('id')->andReturn(7);
+
+        report(new RuntimeException('boom'));
+        PostHog::flush();
+
+        $sent = json_decode(trim((string) file_get_contents($file)), true);
+        unlink($file);
+
+        $this->assertSame('$exception', $sent['event']);
+        $this->assertSame('user:7', $sent['distinct_id']);
+        $this->assertSame(RuntimeException::class, $sent['properties']['$exception_list'][0]['type']);
+        $this->assertSame('boom', $sent['properties']['$exception_list'][0]['value']);
     }
 
     /**

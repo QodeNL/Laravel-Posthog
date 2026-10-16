@@ -8,7 +8,11 @@ return [
     // Only required when Feature Flag evaluate_locally is enabled
     'secret_key' => env('POSTHOG_SECRET_KEY'),
 
+    'release_id' => env('POSTHOG_RELEASE_ID'),
+
     'user_prefix' => 'user',
+
+    'capture_ip' => env('POSTHOG_CAPTURE_IP', false),
 
     'feature_flags' => [
         'default_enabled' => env('POSTHOG_FF_DEFAULT_ENABLED', false),
@@ -28,6 +32,10 @@ return [
     ],
 
     'options' => [],
+
+    'error_tracking' => [
+        'enabled' => env('POSTHOG_ERROR_TRACKING_ENABLED', false),
+    ],
 
     'queue' => [
         'connection' => env('POSTHOG_JOBS_CONNECTION', env('QUEUE_CONNECTION')),

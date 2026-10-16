@@ -34,12 +34,59 @@ class UsesPosthogTest extends TestCase
     public function posthog_init_passes_secret_key_for_local_evaluation(): void
     {
         config()->set('posthog.secret_key', 'phx_local_eval');
+        config()->set('posthog.feature_flags.evaluate_locally', true);
 
         $captured = $this->captureInitArguments();
 
         $this->instanceUsingPosthog()->posthogInit();
 
         $this->assertSame('phx_local_eval', $captured['secretKey']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_withholds_secret_key_when_local_evaluation_is_off(): void
+    {
+        config()->set('posthog.secret_key', 'phx_local_eval');
+        config()->set('posthog.feature_flags.evaluate_locally', false);
+
+        $captured = $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+
+        $this->assertNull($captured['secretKey']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_builds_the_client_once_per_process(): void
+    {
+        // captureInitArguments() expects init() exactly once.
+        $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+        $this->instanceUsingPosthog()->posthogInit();
+        (new class
+        {
+            use UsesPosthog;
+        })->posthogInit();
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_retries_after_a_failed_initialization(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once()->andThrow(new \Exception('Init failed'));
+        $mock->shouldReceive('init')->once();
+
+        Log::shouldReceive('error')->once();
+
+        $this->instanceUsingPosthog()->posthogInit();
+        $this->instanceUsingPosthog()->posthogInit();
     }
 
     #[Test]
@@ -128,6 +175,66 @@ class UsesPosthogTest extends TestCase
         $this->instanceUsingPosthog()->posthogInit();
 
         $this->assertArrayNotHasKey('before_send', $captured['options']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function release_id_installs_a_before_send_hook_that_tags_every_event(): void
+    {
+        config()->set('posthog.release_id', 'rel_123');
+
+        $captured = $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+
+        $beforeSend = $captured['options']['before_send'];
+
+        $this->assertSame(
+            ['event' => 'ordinary', 'properties' => ['$release_id' => 'rel_123']],
+            $beforeSend(['event' => 'ordinary', 'properties' => []]),
+        );
+        $this->assertSame(
+            ['event' => '$feature_flag_called', 'properties' => ['$release_id' => 'rel_123']],
+            $beforeSend(['event' => '$feature_flag_called', 'properties' => []]),
+        );
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function release_id_does_not_override_an_explicit_release_id(): void
+    {
+        config()->set('posthog.release_id', 'rel_123');
+
+        $captured = $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+
+        $event = ['event' => 'ordinary', 'properties' => ['$release_id' => 'rel_explicit']];
+
+        $this->assertSame($event, $captured['options']['before_send']($event));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function release_id_and_disabled_send_events_share_one_before_send_hook(): void
+    {
+        config()->set('posthog.release_id', 'rel_123');
+        config()->set('posthog.feature_flags.send_events', false);
+
+        $captured = $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+
+        $beforeSend = $captured['options']['before_send'];
+
+        $this->assertNull($beforeSend(['event' => '$feature_flag_called', 'properties' => []]));
+        $this->assertSame(
+            ['event' => 'ordinary', 'properties' => ['$release_id' => 'rel_123']],
+            $beforeSend(['event' => 'ordinary', 'properties' => []]),
+        );
     }
 
     #[Test]

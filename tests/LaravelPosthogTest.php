@@ -15,6 +15,7 @@ use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\LaravelPosthog;
 use QodeNL\LaravelPosthog\Tests\Stubs\TestUser;
+use RuntimeException;
 
 class LaravelPosthogTest extends TestCase
 {
@@ -263,6 +264,107 @@ class LaravelPosthogTest extends TestCase
     }
 
     #[Test]
+    public function capture_does_not_add_ip_by_default(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+        $this->simulateHttpRequest('203.0.113.7');
+
+        (new LaravelPosthog)->capture('test-event', ['key' => 'value']);
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === ['key' => 'value'];
+        });
+    }
+
+    #[Test]
+    public function capture_and_identify_add_request_ip_when_enabled(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.capture_ip', true);
+        $this->simulateHttpRequest('203.0.113.7');
+
+        $instance = new LaravelPosthog;
+        $instance->capture('test-event', ['key' => 'value']);
+        $instance->identify('test@example.com');
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === ['key' => 'value', '$ip' => '203.0.113.7'];
+        });
+        Bus::assertDispatched(PosthogIdentifyJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === ['$ip' => '203.0.113.7'];
+        });
+    }
+
+    #[Test]
+    public function capture_keeps_explicit_ip(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.capture_ip', true);
+        $this->simulateHttpRequest('203.0.113.7');
+
+        (new LaravelPosthog)->capture('test-event', ['$ip' => '198.51.100.1']);
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === ['$ip' => '198.51.100.1'];
+        });
+    }
+
+    #[Test]
+    public function capture_does_not_add_ip_in_console(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.capture_ip', true);
+
+        (new LaravelPosthog)->capture('test-event');
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === [];
+        });
+    }
+
+    #[Test]
+    public function capture_uses_custom_ip_resolver(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.capture_ip', true);
+        $this->simulateHttpRequest('203.0.113.7');
+
+        LaravelPosthog::resolveIpUsing(fn () => '198.51.100.2');
+
+        (new LaravelPosthog)->capture('test-event');
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === ['$ip' => '198.51.100.2'];
+        });
+    }
+
+    #[Test]
+    public function custom_ip_resolver_is_ignored_when_capture_ip_is_disabled(): void
+    {
+        Bus::fake();
+        Auth::shouldReceive('user')->andReturnNull();
+
+        LaravelPosthog::resolveIpUsing(fn () => '198.51.100.2');
+
+        (new LaravelPosthog)->capture('test-event');
+
+        Bus::assertDispatched(PosthogCaptureJob::class, function ($job) {
+            return (new \ReflectionProperty($job, 'properties'))->getValue($job) === [];
+        });
+    }
+
+    private function simulateHttpRequest(string $ip): void
+    {
+        (new \ReflectionProperty($this->app, 'isRunningInConsole'))->setValue($this->app, false);
+        $this->app['request']->server->set('REMOTE_ADDR', $ip);
+    }
+
+    #[Test]
     public function alias_dispatches_job_when_enabled(): void
     {
         Bus::fake();
@@ -291,6 +393,81 @@ class LaravelPosthogTest extends TestCase
         $instance->alias('user-456');
 
         Bus::assertNotDispatched(PosthogAliasJob::class);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_sends_with_distinct_id_groups_and_properties(): void
+    {
+        $exception = new RuntimeException('boom');
+
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('captureException')
+            ->once()
+            ->with($exception, 'user:42', ['source' => 'checkout', '$groups' => ['company' => 'company_id_5']])
+            ->andReturnTrue();
+
+        $user = new TestUser;
+        $user->id = 42;
+        Auth::shouldReceive('user')->andReturn($user);
+        Auth::shouldReceive('id')->andReturn(42);
+
+        $instance = new LaravelPosthog;
+        $instance->setGroup('company', 'company_id_5');
+        $instance->captureException($exception, ['source' => 'checkout']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_logs_and_swallows_sdk_errors(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('captureException')->once()->andThrow(new \Exception('SDK down'));
+
+        Auth::shouldReceive('user')->andReturnNull();
+        Log::shouldReceive('info')->once()->with('Posthog captureException call failed: SDK down');
+
+        (new LaravelPosthog)->captureException(new RuntimeException('boom'));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_adds_ip_when_enabled(): void
+    {
+        $exception = new RuntimeException('boom');
+
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once();
+        $mock->shouldReceive('captureException')
+            ->once()
+            ->with($exception, Mockery::any(), ['source' => 'checkout', '$ip' => '203.0.113.7'])
+            ->andReturnTrue();
+
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.capture_ip', true);
+        $this->simulateHttpRequest('203.0.113.7');
+
+        (new LaravelPosthog)->captureException($exception, ['source' => 'checkout']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function capture_exception_does_nothing_when_disabled(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldNotReceive('init');
+        $mock->shouldNotReceive('captureException');
+
+        Auth::shouldReceive('user')->andReturnNull();
+        config()->set('posthog.enabled', false);
+
+        (new LaravelPosthog)->captureException(new RuntimeException('boom'));
     }
 
     #[Test]
@@ -381,6 +558,41 @@ class LaravelPosthogTest extends TestCase
         $this->assertSame('variant-b', $instance->getFeatureFlag('flag-b'));
         $this->assertTrue($instance->isFeatureEnabled('flag-a'));
         $this->assertNull($instance->getFeatureFlag('unknown-flag'));
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function get_feature_flag_payload_reads_from_the_shared_snapshot(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->atLeast()->once();
+        $mock->shouldReceive('evaluateFlags')
+            ->once()
+            ->andReturn($this->fakeFlagSnapshot(
+                ['test-flag' => 'variant-a'],
+                ['test-flag' => ['color' => 'blue']],
+            ));
+
+        Auth::shouldReceive('user')->andReturnNull();
+
+        $instance = new LaravelPosthog;
+
+        $this->assertSame('variant-a', $instance->getFeatureFlag('test-flag'));
+        $this->assertSame(['color' => 'blue'], $instance->getFeatureFlagPayload('test-flag'));
+        $this->assertNull($instance->getFeatureFlagPayload('unknown-flag'));
+    }
+
+    #[Test]
+    public function get_feature_flag_payload_returns_null_when_disabled(): void
+    {
+        Auth::shouldReceive('user')->andReturnNull();
+
+        config()->set('posthog.enabled', false);
+
+        $instance = new LaravelPosthog;
+
+        $this->assertNull($instance->getFeatureFlagPayload('test-flag'));
     }
 
     #[Test]

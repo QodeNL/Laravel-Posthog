@@ -4,6 +4,7 @@ namespace QodeNL\LaravelPosthog;
 
 use Auth;
 use Closure;
+use Exception;
 use Log;
 use PostHog\PostHog;
 use QodeNL\LaravelPosthog\Jobs\PosthogAliasJob;
@@ -11,6 +12,7 @@ use QodeNL\LaravelPosthog\Jobs\PosthogCaptureJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogGroupIdentifyJob;
 use QodeNL\LaravelPosthog\Jobs\PosthogIdentifyJob;
 use QodeNL\LaravelPosthog\Traits\UsesPosthog;
+use Throwable;
 
 class LaravelPosthog
 {
@@ -22,6 +24,8 @@ class LaravelPosthog
 
     protected static ?Closure $distinctIdResolver = null;
 
+    protected static ?Closure $ipResolver = null;
+
     public function __construct()
     {
         $this->sessionId = static::$distinctIdResolver
@@ -32,6 +36,11 @@ class LaravelPosthog
     public static function resolveDistinctIdUsing(?Closure $callback): void
     {
         static::$distinctIdResolver = $callback;
+    }
+
+    public static function resolveIpUsing(?Closure $callback): void
+    {
+        static::$ipResolver = $callback;
     }
 
     private function getDefaultDistinctId(): string
@@ -48,6 +57,28 @@ class LaravelPosthog
         }
 
         return (string) Auth::id();
+    }
+
+    private function getIp(): ?string
+    {
+        if (static::$ipResolver) {
+            return call_user_func(static::$ipResolver);
+        }
+
+        return app()->runningInConsole() ? null : request()->ip();
+    }
+
+    private function prepareProperties(array $properties): array
+    {
+        if (config('posthog.capture_ip', false) && ! array_key_exists('$ip', $properties)) {
+            $ip = $this->getIp();
+
+            if ($ip !== null && $ip !== '') {
+                $properties['$ip'] = $ip;
+            }
+        }
+
+        return $properties;
     }
 
     public function setGroup(string $groupType, string $groupKey, array $properties = []): self
@@ -78,7 +109,7 @@ class LaravelPosthog
     public function identify(string $email = '', array $properties = []): void
     {
         if ($this->posthogEnabled()) {
-            PosthogIdentifyJob::dispatch($this->sessionId, $email, $properties);
+            PosthogIdentifyJob::dispatch($this->sessionId, $email, $this->prepareProperties($properties));
         } else {
             Log::debug('PosthogIdentifyJob not dispatched because posthog is disabled');
         }
@@ -87,7 +118,7 @@ class LaravelPosthog
     public function capture(string $event, array $properties = []): void
     {
         if ($this->posthogEnabled()) {
-            PosthogCaptureJob::dispatch($this->sessionId, $event, $properties, null, $this->groups);
+            PosthogCaptureJob::dispatch($this->sessionId, $event, $this->prepareProperties($properties), null, $this->groups);
         } else {
             Log::debug('PosthogCaptureJob not dispatched because posthog is disabled');
         }
@@ -108,6 +139,27 @@ class LaravelPosthog
             PosthogAliasJob::dispatch($this->sessionId, $userId);
         } else {
             Log::debug('PosthogAliasJob not dispatched because posthog is disabled');
+        }
+    }
+
+    public function captureException(Throwable $exception, array $properties = []): void
+    {
+        if (! $this->posthogEnabled()) {
+            Log::debug('Posthog exception not captured because posthog is disabled');
+
+            return;
+        }
+
+        $this->posthogInit();
+
+        if (! empty($this->groups)) {
+            $properties['$groups'] = $this->groups;
+        }
+
+        try {
+            PostHog::captureException($exception, $this->sessionId, $this->prepareProperties($properties));
+        } catch (Exception $e) {
+            Log::info('Posthog captureException call failed: '.$e->getMessage());
         }
     }
 
@@ -138,6 +190,21 @@ class LaravelPosthog
         }
 
         return config('posthog.feature_flags.default_enabled') ?? false;
+    }
+
+    public function getFeatureFlagPayload(
+        string $featureKey,
+        array $groups = [],
+        array $personProperties = [],
+        array $groupProperties = [],
+    ): mixed {
+        if ($this->posthogEnabled()) {
+            return app(PosthogFlagSnapshots::class)
+                ->for($this->sessionId, $groups, $personProperties, $groupProperties)
+                ->getFlagPayload($featureKey);
+        }
+
+        return null;
     }
 
     public function getAllFlags(

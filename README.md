@@ -123,11 +123,41 @@ Posthog::setGroup('company', 'company_id_5', ['name' => 'Acme Inc', 'plan' => 'e
 
 For more information about group analytics, check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#group-analytics).
 
+## Error tracking
+
+### Report exceptions automatically
+
+Enable error tracking to send every exception that reaches Laravel's exception handler to [Posthog error tracking](https://posthog.com/docs/error-tracking):
+
+```bash
+POSTHOG_ERROR_TRACKING_ENABLED=true
+```
+
+This includes uncaught exceptions and everything you pass to `report()`. Exceptions Laravel doesn't report (such as `dontReport`, validation and 404 exceptions) are not sent either. The exception is linked to the same distinct ID as your other events. If that ID can't be resolved, for example because the database is down, the exception is sent anonymously.
+
+Don't enable the SDK's own `error_tracking.enabled` option through `posthog.options`. It installs PHP's global exception handlers, which conflict with Laravel's.
+
+### Capture exceptions manually
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+try {
+    // ...
+} catch (Throwable $e) {
+    Posthog::captureException($e, ['order_id' => $order->id]);
+}
+```
+
+Groups set with `setGroup` are included. Exceptions are sent directly instead of through a job, because an exception can't be put on the queue.
+
+Set a [release ID](#release-id) to link exceptions to the release they happened in.
+
 ## Feature flags
 
 ### Laravel Pennant
 
-This package also includes a custom driver for the [Laravel Pennant](https://laravel.com/docs/11.x/pennant) package. With this custom driver, you can use Laravel Pennant and listen to the feature flags set in Posthog. 
+This package also includes a custom driver for the [Laravel Pennant](https://laravel.com/docs/13.x/pennant) package. With this custom driver, you can use Laravel Pennant and listen to the feature flags set in Posthog. 
 
 To use this driver, simply add the following to your .env file. You don't need to create the database migration.
 ```text
@@ -184,11 +214,21 @@ use QodeNL\LaravelPosthog\Facades\Posthog;
 Posthog::getFeatureFlag('myFeatureFlagKey');
 ```
 
-Get feature flag. Returns `false` if feature is disabled. Returns `true` (or `payload` if set).  
+Get feature flag. Returns `false` if feature is disabled. Returns `true`, or the variant key for multivariate flags.
+
+#### Get feature flag payload
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+Posthog::getFeatureFlagPayload('myFeatureFlagKey'); // ['color' => 'blue']
+```
+
+Get the decoded JSON payload of a feature flag. Returns `null` if the flag has no payload, doesn't exist or Posthog is disabled. The payload comes from the same cached evaluation as `getFeatureFlag`, so it doesn't cost an extra request.
 
 #### Optional attributes
 
-You can pass `groups`, `personProperties` and `groupProperties` to the isFeatureEnabled and getFeatureFlag functions. 
+You can pass `groups`, `personProperties` and `groupProperties` to the isFeatureEnabled, getFeatureFlag and getFeatureFlagPayload functions. 
 
 Please check the [Posthog PHP documentation](https://posthog.com/docs/libraries/php#advanced-overriding-server-properties) for more information. 
 
@@ -232,6 +272,16 @@ Anything you leave unset keeps the SDK default. For options without a dedicated 
 ],
 ```
 
+### Release ID
+
+Set a release ID to send it as `$release_id` on every event. Posthog error tracking uses it to link exceptions to a release. Create the release and get its ID with `posthog-cli release resolve` during your deploy.
+
+```bash
+POSTHOG_RELEASE_ID=
+```
+
+An explicit `$release_id` in the event properties always wins.
+
 ### Custom Distinct ID
 
 By default, the package generates a distinct ID based on the authenticated user ID (with an optional prefix) or a hashed session ID for anonymous users.
@@ -248,6 +298,31 @@ public function boot(): void
     });
 }
 ```
+
+### User IP address
+
+Events are sent from a queue job, so Posthog sees the server's IP address and resolves GeoIP to the server's location. Enable `capture_ip` to send the visitor's IP as `$ip` on capture and identify calls and on captured exceptions:
+
+```bash
+POSTHOG_CAPTURE_IP=true
+```
+
+The IP is read from `request()->ip()` when the event is dispatched. Nothing is added in the console (queue workers, artisan commands), and an explicit `$ip` in the event properties always wins.
+
+Behind a reverse proxy or load balancer, `request()->ip()` returns the proxy's IP unless you [trust the proxy](https://laravel.com/docs/requests#configuring-trusted-proxies). Alternatively, resolve the IP yourself, for example from Cloudflare's `CF-Connecting-IP` header:
+
+```php
+use QodeNL\LaravelPosthog\Facades\Posthog;
+
+public function boot(): void
+{
+    Posthog::resolveIpUsing(function () {
+        return request()->header('CF-Connecting-IP') ?? request()->ip();
+    });
+}
+```
+
+The resolver only runs when `capture_ip` is enabled. Return `null` to send no IP.
 
 ### Queue / jobs
 
