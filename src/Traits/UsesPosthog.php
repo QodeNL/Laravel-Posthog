@@ -5,17 +5,24 @@ namespace QodeNL\LaravelPosthog\Traits;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
+use QodeNL\LaravelPosthog\PosthogClient;
 
 trait UsesPosthog
 {
     public function posthogInit(): void
     {
+        if (PosthogClient::$initialized) {
+            return;
+        }
+
         try {
             PostHog::init(
                 config('posthog.key'),
                 $this->posthogOptions(),
-                secretKey: config('posthog.secret_key'),
+                secretKey: config('posthog.feature_flags.evaluate_locally') ? config('posthog.secret_key') : null,
             );
+
+            PosthogClient::$initialized = true;
         } catch (Exception $e) {
             Log::error('Posthog initialization failed: '.$e->getMessage());
         }

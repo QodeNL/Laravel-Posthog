@@ -34,12 +34,59 @@ class UsesPosthogTest extends TestCase
     public function posthog_init_passes_secret_key_for_local_evaluation(): void
     {
         config()->set('posthog.secret_key', 'phx_local_eval');
+        config()->set('posthog.feature_flags.evaluate_locally', true);
 
         $captured = $this->captureInitArguments();
 
         $this->instanceUsingPosthog()->posthogInit();
 
         $this->assertSame('phx_local_eval', $captured['secretKey']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_withholds_secret_key_when_local_evaluation_is_off(): void
+    {
+        config()->set('posthog.secret_key', 'phx_local_eval');
+        config()->set('posthog.feature_flags.evaluate_locally', false);
+
+        $captured = $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+
+        $this->assertNull($captured['secretKey']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_builds_the_client_once_per_process(): void
+    {
+        // captureInitArguments() expects init() exactly once.
+        $this->captureInitArguments();
+
+        $this->instanceUsingPosthog()->posthogInit();
+        $this->instanceUsingPosthog()->posthogInit();
+        (new class
+        {
+            use UsesPosthog;
+        })->posthogInit();
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function posthog_init_retries_after_a_failed_initialization(): void
+    {
+        $mock = Mockery::mock('alias:PostHog\PostHog');
+        $mock->shouldReceive('init')->once()->andThrow(new \Exception('Init failed'));
+        $mock->shouldReceive('init')->once();
+
+        Log::shouldReceive('error')->once();
+
+        $this->instanceUsingPosthog()->posthogInit();
+        $this->instanceUsingPosthog()->posthogInit();
     }
 
     #[Test]
